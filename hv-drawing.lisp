@@ -117,6 +117,6 @@
 
 (defparameter data '((1 2 3) (2 4 nil) (3 5 6) (4 nil 7) (5 8 9) (6 nil 12) (7 10 11) (8 nil nil) (9 nil nil) (10 nil nil) (11 nil nil) (12 nil 13) (13 nil nil)))
 
-(defparameter drawer (make-instance 'hv-drawer :data data))
+ (defparameter drawer (make-instance 'hv-drawer :data data))
 (glut:display-window (make-instance 'hv-window :drawer drawer))
 
