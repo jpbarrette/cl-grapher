@@ -4,7 +4,7 @@
 
 (declaim (optimize (debug 3)))
 
-(defparameter data '((1 2 3) (2 1 3 4) (3 2 1) (4 2)))
+(defparameter data '((1 2 3) (2 1 3 4) (3 2 1) (4 2 5 6) (5 4 6) (6 4 5)))
 
 (defclass energy-based-drawer () 
   ((data :initarg :data :accessor data)
@@ -26,7 +26,7 @@
   ((vertex :initarg :vertex :accessor vertex)
    (velocity :initarg :velocity :accessor velocity)
    (coordinates :initarg :coordinates :accessor coordinates))
-  (:default-initargs :velocity '(0 0) :coordinates (list (random 1.0) (random 1.0))))
+  (:default-initargs :velocity '(0 0) :coordinates (list (random 5.0) (random 5.0))))
 
 (defun add-force (lhs-force rhs-force)
   (mapcar (lambda (x y) (+ x y)) lhs-force rhs-force))
@@ -38,8 +38,8 @@ This is flexible to handle 2 or 3 dimensions  "
 			    (expt (- c2 c1) 2))
 			  lhs-points rhs-points))))
 
-(defparameter *spring-length* 1)
-(defparameter *spring-stiffness* 15)
+(defparameter *spring-length* 5)
+(defparameter *spring-stiffness* 5000)
 
 
 (defun hooke-attraction-for-component (distance)
@@ -63,8 +63,8 @@ This is flexible to handle 2 or 3 dimensions  "
 	      (* (- c2 c1) (/ distance) coulomb-repulsion))
 	    lhs-coord rhs-coord)))
 
-(defparameter *timestep* 0.001)
-(defparameter *damping* 1.5)
+(defparameter *timestep* 0.0001)
+(defparameter *damping* 0.2)
 (defparameter *mass* 1)
 
 (defun next-step (drawer)
