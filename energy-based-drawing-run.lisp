@@ -1,7 +1,7 @@
-(let ((drawer (make-instance 'energy-based-drawer :data data)))
+(let ((drawer (make-instance 'energy-based-drawer :graph graph)))
   (glut:display-window (make-instance 'energy-based-window :drawer drawer)))
 
-;(fmakunbound 'toggle-debug)
+;(Fmakunbound 'toggle-debug)
 
 (distance '(-0.8291417 -0.14264421) ' (0.7395774 0.59272885))
 
