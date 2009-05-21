@@ -8,8 +8,8 @@
 
 (defparameter *debug* nil)
 
-(defparameter data '((1 2 3) (2 1 3 4) (3 2 1) (4 2 5 6) (5 4 6) (6 4 5)))
-;(defparameter data '((1 2 3 4 5 6) (2 1) (3 1) (4 1) (5 1) (6 1)))
+;(defparameter data '((1 2 3) (2 1 3 4) (3 2 1) (4 2 5 6) (5 4 6) (6 4 5)))
+(defparameter data '((1 2 3 4 5 6) (2 1) (3 1) (4 1) (5 1) (6 1)))
 ;(defparameter data '((1 6) (2) (3) (4) (5) (6 1)))
 
 (defclass energy-based-drawer () 
@@ -52,15 +52,36 @@
 (defun add-force (lhs-force rhs-force)
   (mapcar (lambda (x y) (+ x y)) lhs-force rhs-force))
 
-(defun distance (lhs-points rhs-points)
+(defun distance-base (lhs-points rhs-points)
   "Returns the distance between two points
 This is flexible to handle 2 or 3 dimensions  "
   (sqrt (apply '+ (mapcar (lambda (c1 c2)
 			    (expt (- c2 c1) 2))
 			  lhs-points rhs-points))))
 
+(defun recalibrate (lhs-points rhs-points)
+  "Modifies very slightly two points to ensure they don't
+have a null distance between them." 
+  (labels ((randomize (points)
+	     (maplist (lambda (c)
+		       (setf (car c) (+ (random 0.0001) (car c))))
+		      points)))
+    (do ((lhs (randomize lhs-points) (randomize lhs-points))
+	 (rhs (randomize rhs-points) (randomize rhs-points)))
+	((not (eql (distance-base lhs rhs) 0))))))
+
+(defun distance (lhs-points rhs-points)
+  "Returns the distance between two points
+This is flexible to handle 2 or 3 dimensions  "
+  (let ((dist (sqrt (apply '+ (mapcar (lambda (c1 c2)
+					(expt (- c2 c1) 2))
+				      lhs-points rhs-points)))))
+    (when (equal dist 0)
+      (setf dist (recalibrate lhs-points rhs-points)))
+    dist))
+
 (defparameter *spring-length* 10)
-(defparameter *spring-stiffness* 500)
+(defparameter *spring-stiffness* 5000)
 
 
 (defun hooke-attraction-for-component (distance)
@@ -75,17 +96,17 @@ This is flexible to handle 2 or 3 dimensions  "
 
 ;(hooke-attraction '(0 0) '(0.41931432 0.41931432))
 
-(defparameter *coulomb-constant* 2000)
+(defparameter *coulomb-constant* 20000000)
 (defun coulomb-repulsion (lhs-coord rhs-coord)
   (let* ((distance (distance lhs-coord rhs-coord))
-	 (coulomb-repulsion (/ *coulomb-constant* (expt distance 3))))
+	 (coulomb-repulsion (/ *coulomb-constant* (expt distance 2))))
     (mapcar (lambda (c1 c2)
 	      (* (- c1 c2) (/ distance) coulomb-repulsion))
 	    lhs-coord rhs-coord)))
 
 ;(coulomb-repulsion '(0.24730462 0.20116545) '(0.45538783 0.8761474))
 
-(defparameter *timestep* 0.01)
+(defparameter *timestep* 0.001)
 (defparameter *damping* 0.5)
 (defparameter *mass* 1)
 
@@ -131,7 +152,7 @@ This is flexible to handle 2 or 3 dimensions  "
 								(* (+ v (* *timestep* n-f)) *damping*))
 							      (velocity val) net-force))
 		   (setf (gethash key new-coordinates) (mapcar (lambda (c v)
-								 (+ c (* *timestep* v)))
+								 (+ c (min 1.0 (* *timestep* v))))
 							       (coordinates val) (gethash key new-velocities)))
 		   (setf total-kinetic-energy (+ total-kinetic-energy (* *mass* (sqrt (apply '+ (mapcar (lambda (c) 
 													  (expt c 2))
