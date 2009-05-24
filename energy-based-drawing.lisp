@@ -3,6 +3,7 @@
 (require 'cl-glut)
 ;(require 'anaphora)
 ;(require 'cl-ftgl)
+(glut:init)
 
 (declaim (optimize (debug 3)))
 
@@ -39,9 +40,13 @@
    (dimension :initarg :dimension :accessor dimension)
    (is-stable :initarg :is-stable :accessor is-stable)
    (font :accessor font-of)
-   (file :reader file-of :initarg :file))
-  (:default-initargs :dimension 2 :is-stable nil :file "example.otf"))
+   (file :reader file-of :initarg :file)
+   (vertice-list :initarg :vertice-list :accessor vertice-list))
+  (:default-initargs :dimension 2 :is-stable nil :file "example.otf" :vertice-list nil))
+ 
 
+;defmethod initialize-instance :after ((drawer energy-based-drawer) &key)
+    
 (defun is-debug ()
   *debug*)
 
@@ -200,11 +205,17 @@ This is flexible to handle 2 or 3 dimensions  "
 
 (defun draw (drawer)
   (next-step drawer)
+  (setf (vertice-list drawer) (gl:gen-lists 1))
+  (let ((qobj (glu::new-quadric))) 
+    (gl:with-new-list ((vertice-list drawer) :compile)
+      (gl:color 0 0 0)
+      (glu::disk qobj 0 1.5 32 32)))
   (maphash (lambda (k v)
 	     (when (is-debug)
 	       (format t "vertext ~A coordinates: ~A~%" k (coordinates v)))
 	     (let ((x (car (coordinates v)))
 		   (y (cadr (coordinates v))))
+	       (draw-vertice drawer x y)
 	       (mapcar (lambda (o-k)
 			 (let* ((other-vertex (gethash o-k (data drawer)))
 				(other-x (car (coordinates other-vertex)))
@@ -218,6 +229,26 @@ This is flexible to handle 2 or 3 dimensions  "
   (:default-initargs 
    :width 800 :height 800 :pos-x 100 :pos-y 100
    :mode '(:single :rgb) :title "chapter.2.5.lisp"))
+
+#|(defun make-circle ()
+  (let ((qobj (glu:new-quadric)))
+    (gl:with-pushed-matrix
+      (gl:translate 0 0 0)
+      (glu:quadric-draw-style qobj :fill)
+      (glu:quadric-normals qobj :smooth)
+      (glu::disk qobj 10 13 2 2))))|#
+
+(defun draw-vertice (drawer x y) 
+  (gl:with-pushed-matrix 
+    (gl:translate x y 0)
+    (gl:call-list (vertice-list drawer))))
+
+#|(defun draw-vertice () 
+  (let ((my-list (gl:gen-lists 1)) 
+	(qobj (glu::new-quadric))) 
+    (gl:with-new-list (my-list :compile) (gl:color 1 0 0) (glu::disk qobj 0 1.5 32 32))
+    (gl:call-list my-list)))|#
+
 
 #|(defmethod initialize-instance :after ((w energy-based-window) &key)
   (gl:shade-model :smooth)
@@ -247,7 +278,6 @@ This is flexible to handle 2 or 3 dimensions  "
 
 (defmethod glut:display ((w energy-based-window))
   (gl:clear :color-buffer-bit)
-
   ; white for all lines
   (gl:color 0 0 0)
   ;; 
