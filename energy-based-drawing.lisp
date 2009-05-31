@@ -5,7 +5,7 @@
 ;(require 'cl-ftgl)
 (glut:init)
 
-(declaim (optimize (debug 3)))
+;(declaim (optimize (debug 3)))
 
 (defparameter *debug* nil)
 
@@ -59,6 +59,23 @@
 
 (defun toggle-debug ()
   (setf *debug* (not (is-debug))))
+
+#|(defmethod initialize-instance :after ((w energy-based-window) &key)
+  ;(gl:shade-model :smooth)
+;  (gl:enable :texture-2d)
+;  (gl:enable :line-smooth)
+;  (gl:enable :point-smooth)
+;  (gl:enable :polygon-smooth)
+;  (gl:enable :blend)
+;  (gl:enable :depth-test)
+;  (gl:hint :point-smooth-hint :dont-care)
+;  (gl:hint :line-smooth-hint :dont-care)
+;  (gl:hint :polygon-smooth-hint :dont-care)
+;  (gl:hint :perspective-correction-hint :dont-care)
+;  (gl:depth-mask 0)
+;  (gl:blend-func :src-alpha :one-minus-src-alpha)
+;  (gl:depth-func :equal))|#
+
 
 (defun init-drawer (drawer)
   (setf (is-stable drawer) nil)
@@ -145,7 +162,7 @@ This is flexible to handle 2 or 3 dimensions  "
 ;(coulomb-repulsion '(0.24730462 0.20116545) '(0.45538783 0.8761474))
 
 (defparameter *timestep* 0.0001)
-(defparameter *damping* 0.7)
+(defparameter *damping* 0.8)
 (defparameter *mass* 10)
 
 (defun next-step (drawer)
@@ -163,7 +180,7 @@ This is flexible to handle 2 or 3 dimensions  "
 		   
 		   ;; for each other node.
 		   (maphash (lambda (other-key other-val)
-			      (unless (or (eq key other-key) (> (distance (coordinates val) (coordinates other-val)) (* *spring-length* 3)))
+			      (unless (or (eq key other-key) (> (distance (coordinates val) (coordinates other-val)) (* *spring-length* 4)))
 				(let ((c-r (coulomb-repulsion (coordinates val) (coordinates other-val))))
 				  (when (is-debug)
 				    (format t "  coulomb-repulsion from ~A to ~A: ~A~%" key other-key c-r))
@@ -212,10 +229,10 @@ This is flexible to handle 2 or 3 dimensions  "
 
 (defun draw (drawer)
   (next-step drawer)
+  (gl:line-width 1.5)
   (setf (vertice-list drawer) (gl:gen-lists 1))
   (let ((qobj (glu::new-quadric))) 
     (gl:with-new-list ((vertice-list drawer) :compile)
-      (gl:color 0 0 0)
       (glu::disk qobj 0 1.5 32 32)))
   (maphash (lambda (k v)
 	     (when (is-debug)
@@ -257,22 +274,6 @@ This is flexible to handle 2 or 3 dimensions  "
     (gl:call-list my-list)))|#
 
 
-#|(defmethod initialize-instance :after ((w energy-based-window) &key)
-  (gl:shade-model :smooth)
-  (gl:enable :texture-2d)
-  (gl:enable :line-smooth)
-  (gl:enable :point-smooth)
-  (gl:enable :polygon-smooth)
-  (gl:enable :blend)
-  (gl:enable :depth-test)
-  (gl:hint :point-smooth-hint :dont-care)
-  (gl:hint :line-smooth-hint :dont-care)
-  (gl:hint :polygon-smooth-hint :dont-care)
-  (gl:hint :perspective-correction-hint :dont-care)
-  (gl:depth-mask 0)
-  (gl:blend-func :src-alpha :one-minus-src-alpha)
-  (gl:depth-func :equal)
-  (gl:line-width 5.0))|#
 
 (defmethod glut:display-window :before ((w energy-based-window))
   (gl:clear-color #x00ff #x00ff #x00ff 0)
@@ -286,7 +287,7 @@ This is flexible to handle 2 or 3 dimensions  "
 (defmethod glut:display ((w energy-based-window))
   (gl:clear :color-buffer-bit)
   ; white for all lines
-  (gl:color 0 0 0)
+  (gl:color 0.2 0 0.1)
   ;; 
   (draw (drawer w))
   (gl:flush))
