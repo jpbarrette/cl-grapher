@@ -129,7 +129,10 @@ This is flexible to handle 2 or 3 dimensions  "
 
 
 (defun hooke-attraction-for-component (distance)
-  (* (- distance *spring-length*) *spring-stiffness*))
+  (let ((difference (- distance *spring-length*)))
+    (if (> difference 1)
+      (* (- (/ (- distance) distance)) (expt (- distance *spring-length*) 2) *spring-stiffness*)
+      (* (- distance *spring-length*) *spring-stiffness*))))
 
 
 (defun hooke-attraction (lhs-coord rhs-coord)
@@ -339,6 +342,8 @@ This is flexible to handle 2 or 3 dimensions  "
 (defmethod glut:mouse ((w energy-based-window) button state x y)
   (cond ((and (eq button :left-button) (eq state :up))
 	 (undrag (drawer w)))
+	((and (eq button :right-button) (eq state :down))
+	 (format t "right-button~%"))
 	((and (eq button :left-button) (eq state :down))
 	 (drag (drawer w) (find-vertice (drawer w) x y) x y)
 	 (glut:post-redisplay))))
