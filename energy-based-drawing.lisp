@@ -42,16 +42,25 @@
 		     
 
 (defclass energy-based-drawer () 
-  ((data :accessor data)
-   (graph :initarg :graph :accessor graph)
+  ((data :initarg :data :accessor data)
    (dimension :initarg :dimension :accessor dimension)
    (is-stable :initarg :is-stable :accessor is-stable)
    (font :accessor font-of)
    (dragging :initarg :dragging :accessor dragging)
    (file :reader file-of :initarg :file)
-   (vertice-list :initarg :vertice-list :accessor vertice-list))
-  (:default-initargs :dimension 3 :is-stable nil :file "example.otf" :vertice-list nil :dragging nil))
- 
+   (vertice-list :initarg :vertice-list :accessor vertice-list)
+   (state :initarg :state :accessor state)
+   (selected :initarg :selected :accessor selected))
+  (:default-initargs
+   :dimension 3 
+    :data (make-hash-table)
+    :is-stable nil
+    :file "example.otf" 
+    :vertice-list nil
+    :dragging nil
+    :state nil
+    :selected nil))
+
 
 ;defmethod initialize-instance :after ((drawer energy-based-drawer) &key)
     
@@ -78,25 +87,45 @@
 ;  (gl:depth-func :equal))|#
 
 
-(defun init-drawer (drawer)
+(defun init-drawer (drawer &key graph)
   (setf (is-stable drawer) nil)
-  (setf (data drawer) (make-hash-table))
+  (maphash (lambda (k v)
+	     (declare (ignore k))
+	     (setf (coordinates v) (list 0 0 0)))
+	   (data drawer))
   (mapcar (lambda (vertex)
 	    (let ((key (car vertex)))
 	      (setf (gethash key (data drawer)) (make-instance 'vertex-data :vertex vertex :coordinates (list (random 0.1) (random 0.1) 0)))
 	      (when (is-debug)
 		(format t "initial vertex ~A coordinates: ~A~%" key (coordinates (gethash key (data drawer)))))))
-	  (graph drawer)))
+	  graph))
 
+(defun add-new-vertice (drawer x y)
+  (setf (is-stable drawer) nil)
+  (let ((highest 0))
+    (maphash (lambda (key val)
+	       (declare (ignore val))
+	       (when (< highest key)
+		 (setf highest key)))
+	     (data drawer))
+    (incf highest)
+    (let ((vertice (setf (gethash highest (data drawer)) (make-instance 'vertex-data :vertex (list highest) :coordinates (get-object-coordinates x y)))))
+      (format t "new vertice ~A, coords=~A~%" highest (coordinates vertice))
+      vertice)))
+	     
+(defmethod graph ((drawer energy-based-drawer))
+  (loop for v being the hash-value of (data drawer) collect (vertex v)))
 
-(defmethod initialize-instance :after ((drawer energy-based-drawer) &rest other)
-  (declare (ignore other))
+(defmethod initialize-instance :after ((drawer energy-based-drawer) &key graph)
   #|(setf (font-of drawer)
 	(anaphora:aprog1 (cl-ftgl:create-buffer-font (file-of drawer))
 	  (cl-ftgl:set-font-face-size drawer 80 72)
 	  (cl-ftgl:set-font-char-map drawer :unicode)))|#
-  (init-drawer drawer))
+  (init-drawer drawer :graph graph))
 
+(defmethod clear ((drawer energy-based-drawer))
+  (setf (data drawer) (make-hash-table))
+  (init-drawer drawer))
 
 
 (defclass vertex-data ()
@@ -104,7 +133,7 @@
    (velocity :initarg :velocity :accessor velocity)
    (coordinates :initarg :coordinates :accessor coordinates)
    (fixed :initarg :fixed :accessor fixed))
-  (:default-initargs :velocity '(0 0 0) :coordinates (list (random 1.0) (random 1.0) 0.0) :fixed nil))
+  (:default-initargs :velocity '(0 0 0) :coordinates (list 0 0 0.0) :fixed nil))
 
 (defun add-force (lhs-force rhs-force)
   (mapcar (lambda (x y) (+ x y)) lhs-force rhs-force))
@@ -146,7 +175,7 @@ This is flexible to handle 2 or 3 dimensions  "
 (defparameter *coulomb-constant* 200000000)
 (defun coulomb-repulsion (lhs-coord rhs-coord)
   (let* ((distance (distance lhs-coord rhs-coord))
-	 (coulomb-repulsion (/ *coulomb-constant* (expt distance 2))))
+	 (coulomb-repulsion (/ *coulomb-constant* (expt distance 1.3))))
     (mapcar (lambda (c1 c2)
 	      (* (- c1 c2) (/ distance) coulomb-repulsion))
 	    lhs-coord rhs-coord)))
@@ -172,7 +201,7 @@ This is flexible to handle 2 or 3 dimensions  "
 		   (when (not (fixed val))
 		     ;; for each other node.
 		     (maphash (lambda (other-key other-val)
-				(unless (or (eq key other-key) (> (distance (coordinates val) (coordinates other-val)) (* *spring-length* 5)))
+				(unless (or (eq key other-key) (> (distance (coordinates val) (coordinates other-val)) (* *spring-length* 3)))
 				  (let ((c-r (coulomb-repulsion (coordinates val) (coordinates other-val))))
 				    (when (is-debug)
 				      (format t "  coulomb-repulsion from ~A to ~A: ~A~%" key other-key c-r))
@@ -200,7 +229,7 @@ This is flexible to handle 2 or 3 dimensions  "
 								(velocity val) net-force))
 		     (setf (gethash key new-coordinates) (mapcar (lambda (c v)
 								   ;; Ensure we don't mode more than 0.1 away (negative/positive)
-								   (+ c (max -3.0 (min 3.0 (* *timestep* v)))))
+								   (+ c (max -2.0 (min 2.0 (* *timestep* v)))))
 								 (coordinates val) (gethash key new-velocities)))
 		     (setf total-kinetic-energy (+ total-kinetic-energy (* *mass* (sqrt (apply '+ (mapcar (lambda (c) 
 													    (expt c 2))
@@ -242,7 +271,8 @@ This is flexible to handle 2 or 3 dimensions  "
 	   (data drawer)))
 
 (defclass energy-based-window (glut:window) 
-  ((drawer :accessor drawer :initarg :drawer))
+  ((drawers :accessor drawers :initarg :drawers)
+   (drawer :accessor drawer :initarg :drawer))
   (:default-initargs 
    :width 800 :height 800 :pos-x 100 :pos-y 100
    :mode '(:single :rgb) :title "chapter.2.5.lisp"))
@@ -307,6 +337,8 @@ This is flexible to handle 2 or 3 dimensions  "
     (#\q (glut:destroy-current-window))
     (#\d (toggle-debug))
     (#\s (setf (is-stable (drawer w)) (not (is-stable (drawer w)))))
+    (#\c (clear (drawer w)))
+    (#\P (format t "~A~%" (graph (drawer w))))
     (#\r (init-drawer (drawer w)))))
 
 (defun get-window-coordinates (p)
@@ -339,11 +371,39 @@ This is flexible to handle 2 or 3 dimensions  "
     (setf (fixed (gethash (dragging drawer) (data drawer))) nil)
     (setf (dragging drawer) nil)))
 
+(defun toggle-new-edge (drawer found)
+  (setf (state drawer) 'adding-edge)
+  (setf (selected drawer) found))
+
+(defun right-mouse-down (drawer x y)
+  (let ((found (find-vertice drawer x y)))
+    (if found
+      (toggle-new-edge drawer found)
+      (add-new-vertice drawer x y))))
+
+(defun add-new-edge (drawer destination)
+  (setf (is-stable drawer) nil)
+  (let* ((origin (selected drawer))
+	 (origin-vertex (gethash origin (data drawer)))
+	 (destination-vertex (gethash destination (data drawer))))
+    (when (null (position destination (vertex origin-vertex)))
+      (nconc (vertex origin-vertex) (list destination))
+      (nconc (vertex destination-vertex) (list origin)))
+    (setf (state drawer) nil)))
+
+(defun right-mouse-up (drawer x y)
+  (when (eq (state drawer) 'adding-edge)
+    (let ((found (find-vertice drawer x y)))
+      (when found
+	(add-new-edge drawer found)))))
+
 (defmethod glut:mouse ((w energy-based-window) button state x y)
   (cond ((and (eq button :left-button) (eq state :up))
 	 (undrag (drawer w)))
 	((and (eq button :right-button) (eq state :down))
-	 (format t "right-button~%"))
+	 (right-mouse-down (drawer w) x y))
+	((and (eq button :right-button) (eq state :up))
+	 (right-mouse-up (drawer w) x y))
 	((and (eq button :left-button) (eq state :down))
 	 (drag (drawer w) (find-vertice (drawer w) x y) x y)
 	 (glut:post-redisplay))))
