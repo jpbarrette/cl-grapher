@@ -261,14 +261,20 @@ This is flexible to handle 2 or 3 dimensions  "
 	       (format t "vertext ~A coordinates: ~A~%" k (coordinates v)))
 	     (let ((x (car (coordinates v)))
 		   (y (cadr (coordinates v))))
-	       (draw-vertice drawer x y)
 	       (mapcar (lambda (o-k)
 			 (let* ((other-vertex (gethash o-k (data drawer)))
 				(other-x (car (coordinates other-vertex)))
 				(other-y (cadr (coordinates other-vertex))))
 			   (draw-one-line x y other-x other-y)))
 		       (cdr (vertex v)))))
-	   (data drawer)))
+	   (data drawer))
+  (maphash (lambda (k v)
+	     (declare (ignore k))
+	     (let ((x (car (coordinates v)))
+		   (y (cadr (coordinates v))))
+	       (draw-vertice drawer x y)))
+	   (data drawer))
+  (setf (vertice-list drawer) (gl:delete-lists (vertice-list drawer) 1)))
 
 (defclass energy-based-window (glut:window) 
   ((drawers :accessor drawers :initarg :drawers)
@@ -286,6 +292,7 @@ This is flexible to handle 2 or 3 dimensions  "
       (glu::disk qobj 10 13 2 2))))|#
 
 (defun draw-vertice (drawer x y) 
+  (gl:color 0.0 0.3 0.0)
   (gl:with-pushed-matrix 
     (gl:translate x y 0)
     (gl:call-list (vertice-list drawer))))
@@ -303,6 +310,7 @@ This is flexible to handle 2 or 3 dimensions  "
   (gl:shade-model :smooth))
 
 (defun draw-one-line (x1 y1 x2 y2)
+  (gl:color 0.2 0 0.1)
   (gl:with-primitives :lines
     (gl:vertex x1 y1)
     (gl:vertex x2 y2)))
@@ -310,7 +318,6 @@ This is flexible to handle 2 or 3 dimensions  "
 (defmethod glut:display ((w energy-based-window))
   (gl:clear :color-buffer-bit)
   ; white for all lines
-  (gl:color 0.2 0 0.1)
   ;; 
   (draw (drawer w))
   (gl:flush))
