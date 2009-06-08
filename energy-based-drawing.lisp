@@ -93,7 +93,7 @@
 	   (data drawer))
   (mapcar (lambda (vertex)
 	    (let ((key (car vertex)))
-	      (setf (gethash key (data drawer)) (make-instance 'vertex-data :vertex vertex :coordinates (list (random 0.1) (random 0.1) (random 0.01))))
+	      (setf (gethash key (data drawer)) (make-instance 'vertex-data :vertex vertex :coordinates (list (random 0.1) (random 0.1) 0)))
 	      (when (is-debug)
 		(format t "initial vertex ~A coordinates: ~A~%" key (coordinates (gethash key (data drawer)))))))
 	  graph))
@@ -131,7 +131,7 @@
    (velocity :initarg :velocity :accessor velocity)
    (coordinates :initarg :coordinates :accessor coordinates)
    (fixed :initarg :fixed :accessor fixed))
-  (:default-initargs :velocity '(0 0 0) :coordinates (list 0 0 0.0) :fixed nil))
+  (:default-initargs :velocity '(0 0 0) :coordinates (list 0 0 0) :fixed nil))
 
 (defun add-force (lhs-force rhs-force)
   (mapcar (lambda (x y) (+ x y)) lhs-force rhs-force))
@@ -279,7 +279,7 @@ This is flexible to handle 2 or 3 dimensions  "
    (drawer :accessor drawer :initarg :drawer))
   (:default-initargs 
    :width 800 :height 600 :pos-x 100 :pos-y 100
-   :mode '(:single :rgb) :title "chapter.2.5.lisp"))
+   :mode '(:double :rgb) :title "chapter.2.5.lisp"))
 
 (defun init-window ()
   (gl:enable :line-smooth)
@@ -325,20 +325,28 @@ This is flexible to handle 2 or 3 dimensions  "
   (gl:clear :color-buffer-bit)
   (init-window)
   (draw (drawer w))
-  (gl:flush))
+  (glut:swap-buffers))
 
 (defmethod glut:idle ((w energy-based-window))
   (next-step (drawer w))
   (glut:post-redisplay))
 
+(defparameter *view-mode* 'ortho)
+
 (defmethod glut:reshape ((w energy-based-window) width height)
   (gl:viewport 0 0 width height)
   (gl:matrix-mode :projection)
   (gl:load-identity)
-  (glu:perspective 100 (float (/ width height)) 1 200)
+  (case *view-mode*
+    ('perspective (glu:perspective 100 (float (/ width height)) 1 200))
+    ('ortho 
+     (let ((width (/ width 4))
+           (height (/ height 4)))
+       (glu:ortho-2d (- width) width (- height) height))))
   (gl:matrix-mode :modelview)
   (gl:load-identity)
-  (gl:translate 0 0 -100))
+  (when (eq *view-mode* 'perspective)
+    gl:translate 0 0 -100))
 
 (defmethod glut:keyboard ((w energy-based-window) key x y)
   (declare (ignore x y))
@@ -358,13 +366,13 @@ This is flexible to handle 2 or 3 dimensions  "
     (list (round x)  (- (elt (gl:get-integer :viewport) 3) (round y)) 0)))
 
 (defun find-vertice (drawer x y)
-  (format t "mouse-click coords=~A~%" (list x y))
-  (let ((nearest nil))
+  (let ((nearest nil)
+        (nearest-distance 100000))
     (maphash (lambda (key val) 
 	       (let* ((window-coordinates (get-window-coordinates (coordinates val)))
 		      (distance (round (distance window-coordinates (list x y 0)))))
-		 (format t "vertice ~A, coords=~A, win-coords=~A, distance=~A~%" key (coordinates val) window-coordinates distance)
-		 (when (< distance 200)
+		 (when (and (< distance 15) (< distance nearest-distance))
+       (setf nearest-distance distance)
 		   (setf nearest key))))
 	     (data drawer))
     nearest))
@@ -422,9 +430,10 @@ This is flexible to handle 2 or 3 dimensions  "
 
 (defun get-object-coordinates (x y)
   (multiple-value-bind (obj-x obj-y obj-z)
-      (glu:un-project x y 1.0)
-    (format t "object-coordinates=~A~%" (list obj-x obj-y obj-z))
-    (list (coerce obj-x 'single-float) (coerce obj-y 'single-float) (coerce obj-z 'single-float))))
+      (glu:un-project x (- (elt (gl:get-integer :viewport) 3) y) 0)
+    ;(glu:un-project x y 1.0)
+    (list (coerce obj-x 'single-float) (coerce obj-y 'single-float) 0)))
+;    (list (coerce obj-x 'single-float) (coerce obj-y 'single-float) (coerce obj-z 'single-float))))
 
 (defmethod glut:motion ((w energy-based-window) x y)
   (let ((drawer (drawer w)))
