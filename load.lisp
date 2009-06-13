@@ -8,6 +8,12 @@
   (defun reset ()
     (init-drawer drawer)))
 
+;  #+(and sbcl sb-thread)
+;  (sb-thread:make-thread (lambda ()
+;                           (glut:display-window (make-instance 'energy-based-window :drawer drawer))))
+;  #-(and sbcl sb-thread)
+;  (glut:display-window (make-instance 'energy-based-window :drawer drawer)))
+
 
 (progn
   (ccl:process-run-function

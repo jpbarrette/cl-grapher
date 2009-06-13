@@ -2,7 +2,7 @@
 (require 'cl-glu)
 (require 'cl-glut)
 
-(load "camera")
+(load "camera-2")
 
 (declaim (optimize (debug 3)))
 
@@ -92,7 +92,7 @@
 ;(setf *BREAK-ON-SIGNALS* nil)
 (defmethod glut:reshape ((w gl-window) width height)
   (gl:viewport 0 0 width height)
-  (perspective *current-camera* width height))
+  (update-aspect-ratio *current-camera* width height))
 
 (defmethod glut:keyboard ((w gl-window) key x y)
   (declare (ignore x y))
@@ -100,8 +100,8 @@
   (case key
     (#\Esc (glut:destroy-current-window))
     (#\q (glut:destroy-current-window))
-    (#\z (zoom *current-camera* :unit -5))
-    (#\Z (zoom *current-camera* :unit 5))
+    (#\z (zoom *current-camera* -5))
+    (#\Z (zoom *current-camera* 5))
     (#\d (toggle-debug))))
 
 
