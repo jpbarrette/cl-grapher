@@ -24,5 +24,5 @@
 
 (defgeneric zoom (camera units))
 (defmethod zoom (camera units)
-  nil)
+  (incf (nth 2 (cam-position camera)) (float units)))
   

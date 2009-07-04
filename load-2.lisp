@@ -3,7 +3,8 @@
 
 (defun main ()
   (let ((window (make-instance 'gl-window)))
-    (glut:display-window window)))
+    #+(and sbcl sb-thread) (sb-thread:make-thread (lambda () (glut:display-window window)))
+    #-(and sbcl sb-thread) (glut:display-window window)))
 
 (main)
 #|(progn

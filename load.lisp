@@ -4,9 +4,7 @@
 
 (let ((drawer (make-instance 'energy-based-drawer :graph data)))
   (defun main ()
-    (glut:display-window (make-instance 'energy-based-window :drawer drawer)))
-  (defun reset ()
-    (init-drawer drawer)))
+    (glut:display-window (make-instance 'energy-based-window :drawer drawer))))
 
 ;  #+(and sbcl sb-thread)
 ;  (sb-thread:make-thread (lambda ()
@@ -15,8 +13,9 @@
 ;  (glut:display-window (make-instance 'energy-based-window :drawer drawer)))
 
 
-(progn
-  (ccl:process-run-function
+(#+ccl 
+ (progn
+   (ccl:process-run-function
    "housekeeping"
    #'ccl::housekeeping-loop)
   (ccl:process-interrupt
@@ -35,9 +34,10 @@
            (ccl::external-call "_CPSSetProcessName" :address psn :address name :void)))
        (ccl::%set-toplevel nil)
        (main)))
-     (ccl::toplevel))))
+     (ccl::toplevel)))))
 
 
+(main)
 
 #|(ccl:process-run-function
  "OpenGL main thread"
